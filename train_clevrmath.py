@@ -175,9 +175,8 @@ max_len,
 
 
 class DefineModel(nn.Module):
-    super(DefineModel, self).__init__()
-
     def __init__(self,):
+        super(DefineModel, self).__init__()
         self.model = lisa
         self.lin1 = nn.Linear(768, 512)
         self.lin2 = nn.Linear(512,256)

@@ -215,5 +215,5 @@ for i in range(epochs):
     for i, (imgs, qtns, labels, _) in enumerate(tset):
         labels = labels.to(device, dtype=torch.long)
         texts = lisamodel(imgs,qtns)
-        print(texts.shape)
+        # print(texts.shape)
         # exit()

@@ -231,4 +231,4 @@ class Lisa(nn.Module):
             final_pred.append(pred_masks[0])
             final_text.append(output_ids)
 
-            return torch.stack(final_pred), torch.stack(final_text)
+        return torch.stack(final_pred), torch.stack(final_text)

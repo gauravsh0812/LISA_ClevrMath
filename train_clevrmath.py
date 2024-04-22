@@ -180,6 +180,7 @@ class LisaModel(nn.Module):
         self.model = lisa
 
     def forward(self, imgs, qtns):
+        print("imgs, qtns length: ", len(imgs))
         preds = self.model(imgs, qtns)
         print(preds.shape)
 

@@ -64,7 +64,7 @@ def preprocess(
 
 # >>>>>>>>>>>>>>>>>>>>>>>>>>>> Additions >>>>>>>>>>>>>
 def lisa(imgs,qtns):
-    args = parse_args(args)
+    args = parse_args()
     os.makedirs(args.vis_save_path, exist_ok=True)
 
     # Create model

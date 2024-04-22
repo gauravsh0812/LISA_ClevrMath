@@ -5,17 +5,12 @@ import torch
 from sklearn.model_selection import train_test_split
 from torch.utils.data import Dataset, DataLoader, DistributedSampler
 from collections import Counter
-from box import Box
 import torch.multiprocessing as mp
 from tqdm.auto import tqdm
 from chat import lisa
 import torch.nn as nn
 
 mp.set_start_method('spawn', force=True)
-
-# reading config file
-with open("config/config.yaml") as f:
-    cfg = Box(yaml.safe_load(f))
 
 def get_max_len(train, test, val):
     qtns = train["QUESTION"].to_list() + \

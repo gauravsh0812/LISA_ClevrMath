@@ -128,7 +128,7 @@ def data_loaders(batch_size):
 
     train_dataloader = DataLoader(
         imml_train,
-        batch_size=batch_size
+        batch_size=batch_size,
         num_workers=0,
         shuffle=shuffle,
         sampler=sampler,

@@ -62,8 +62,8 @@ def preprocess(
     x = F.pad(x, (0, padw, 0, padh))
     return x
 
-
-def main(args):
+# >>>>>>>>>>>>>>>>>>>>>>>>>>>> Additions >>>>>>>>>>>>>
+def lisa(args, batch):
     args = parse_args(args)
     os.makedirs(args.vis_save_path, exist_ok=True)
 
@@ -151,11 +151,15 @@ def main(args):
 
     model.eval()
 
-    while True:
+    final_img = []
+    final_pred = []
+
+    for _b in batch:
+        image_path,prompt = _b
+
         conv = conversation_lib.conv_templates[args.conv_type].copy()
         conv.messages = []
 
-        prompt = input("Please input your prompt: ")
         prompt = DEFAULT_IMAGE_TOKEN + "\n" + prompt
         if args.use_mm_start_end:
             replace_token = (
@@ -167,7 +171,6 @@ def main(args):
         conv.append_message(conv.roles[1], "")
         prompt = conv.get_prompt()
 
-        image_path = input("Please input the image path: ")
         if not os.path.exists(image_path):
             print("File not found in {}".format(image_path))
             continue
@@ -218,36 +221,33 @@ def main(args):
             tokenizer=tokenizer,
         )
         output_ids = output_ids[0][output_ids[0] != IMAGE_TOKEN_INDEX]
+        print("output_ids shape: ", output_ids.shape)
+        final_pred.append(output_ids)
+        final_img.append(pred_masks)
 
-        text_output = tokenizer.decode(output_ids, skip_special_tokens=False)
-        text_output = text_output.replace("\n", "").replace("  ", " ")
-        print("text_output: ", text_output)
+        return torch.stack(final_pred), torch.stack(final_img)
+        
+        # for i, pred_mask in enumerate(pred_masks):
+        #     if pred_mask.shape[0] == 0:
+        #         continue
 
-        for i, pred_mask in enumerate(pred_masks):
-            if pred_mask.shape[0] == 0:
-                continue
+        #     pred_mask = pred_mask.detach().cpu().numpy()[0]
+        #     pred_mask = pred_mask > 0
 
-            pred_mask = pred_mask.detach().cpu().numpy()[0]
-            pred_mask = pred_mask > 0
+        #     save_path = "{}/{}_mask_{}.jpg".format(
+        #         args.vis_save_path, image_path.split("/")[-1].split(".")[0], i
+        #     )
+        #     cv2.imwrite(save_path, pred_mask * 100)
+        #     print("{} has been saved.".format(save_path))
 
-            save_path = "{}/{}_mask_{}.jpg".format(
-                args.vis_save_path, image_path.split("/")[-1].split(".")[0], i
-            )
-            cv2.imwrite(save_path, pred_mask * 100)
-            print("{} has been saved.".format(save_path))
-
-            save_path = "{}/{}_masked_img_{}.jpg".format(
-                args.vis_save_path, image_path.split("/")[-1].split(".")[0], i
-            )
-            save_img = image_np.copy()
-            save_img[pred_mask] = (
-                image_np * 0.5
-                + pred_mask[:, :, None].astype(np.uint8) * np.array([255, 0, 0]) * 0.5
-            )[pred_mask]
-            save_img = cv2.cvtColor(save_img, cv2.COLOR_RGB2BGR)
-            cv2.imwrite(save_path, save_img)
-            print("{} has been saved.".format(save_path))
-
-
-if __name__ == "__main__":
-    main(sys.argv[1:])
+        #     save_path = "{}/{}_masked_img_{}.jpg".format(
+        #         args.vis_save_path, image_path.split("/")[-1].split(".")[0], i
+        #     )
+        #     save_img = image_np.copy()
+        #     save_img[pred_mask] = (
+        #         image_np * 0.5
+        #         + pred_mask[:, :, None].astype(np.uint8) * np.array([255, 0, 0]) * 0.5
+        #     )[pred_mask]
+        #     save_img = cv2.cvtColor(save_img, cv2.COLOR_RGB2BGR)
+        #     cv2.imwrite(save_path, save_img)
+        #     print("{} has been saved.".format(save_path))

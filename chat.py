@@ -152,6 +152,7 @@ def lisa(imgs,qtns):
     model.eval()
 
     final_pred = []
+    final_text = []
 
     for _i,_q in zip(imgs,qtns):
         image_path,prompt = _i,_q
@@ -222,5 +223,6 @@ def lisa(imgs,qtns):
         )
 
         final_pred.append(pred_masks[0])
+        final_text.append(output_ids)
 
-        return torch.stack(final_pred)
+        return torch.stack(final_pred), torch.stack(final_text)

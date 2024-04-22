@@ -181,8 +181,8 @@ class LisaModel(nn.Module):
 
     def forward(self, imgs, qtns):
         print("imgs, qtns length: ", len(imgs))
-        preds = self.model(imgs, qtns)
-        print(preds.shape)
+        preds, texts = self.model(imgs, qtns)
+        print(preds.shape, texts.shape)
 
 class Adaptor(nn.Module):
     def __init__(self,):
@@ -216,4 +216,4 @@ for i in range(epochs):
     for i, (imgs, qtns, labels, _) in enumerate(tset):
         labels = labels.to(device, dtype=torch.long)
         lisamodel(imgs,qtns)
-        exit()
+        # exit()

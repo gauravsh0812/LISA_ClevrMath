@@ -174,36 +174,45 @@ max_len,
 ) = data_loaders(batch_size=16)
 
 
-class DefineModel(nn.Module):
+class LisaModel(nn.Module):
     def __init__(self,):
-        super(DefineModel, self).__init__()
+        super(LisaModel, self).__init__()
         self.model = lisa
-        self.lin1 = nn.Linear(768, 512)
-        self.lin2 = nn.Linear(512,256)
-        self.lin3 = nn.Linear(256,128)
-        self.lin4 = nn.Linear(128,64)
 
     def forward(self, imgs, qtns):
         preds, masks = self.model((imgs, qtns))
         print(preds.shape)
+
+class Adaptor(nn.Module):
+    def __init__(self,):
+        super(Adaptor,self).__init__()
+        self.lin1 = nn.Linear(768, 512)
+        self.lin2 = nn.Linear(512,256)
+        self.lin3 = nn.Linear(256,128)
+        self.lin4 = nn.Linear(128,64)
+    
+    def forward():
+        pass
+
 
 # >>>>>>>>>>>>>>>>>>>>>>>>>>> Train and Test <<<<<<<<<<<<<<<<<<<<<<< #
 
 epochs = 1
 device = "cuda:0"
 
-for param in lisa.parameters():
+lisamodel = LisaModel()
+for param in lisamodel.parameters():
     param.requires_grad = False
 
-model = DefineModel()
+adamodel = Adaptor()
 
 for i in epochs:
     epoch_loss = 0
 
-    model.train()
+    adamodel.train()
 
     tset = tqdm(iter(train_dataloader))
     for i, (imgs, qtns, labels, _) in enumerate(tset):
         labels = labels.to(device, dtype=torch.long)
-        model(imgs, qtns,)
+        lisa(imgs, qtns,)
         exit()

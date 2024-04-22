@@ -43,7 +43,7 @@ def parse_args():
         type=str,
         choices=["llava_v1", "llava_llama_2"],
     )
-    return parser.parse_args(args)
+    return parser.parse_args()
 
 
 def preprocess(

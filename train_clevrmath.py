@@ -7,7 +7,7 @@ from torch.utils.data import Dataset, DataLoader, DistributedSampler
 from collections import Counter
 import torch.multiprocessing as mp
 from tqdm.auto import tqdm
-from chat import lisa
+from chat import Lisa
 import torch.nn as nn
 
 mp.set_start_method('spawn', force=True)
@@ -177,7 +177,7 @@ max_len,
 class LisaModel(nn.Module):
     def __init__(self,):
         super(LisaModel, self).__init__()
-        self.model = lisa
+        self.model = Lisa
 
     def forward(self, imgs, qtns):
         preds, texts = self.model(imgs, qtns)

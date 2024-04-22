@@ -63,166 +63,171 @@ def preprocess(
     return x
 
 # >>>>>>>>>>>>>>>>>>>>>>>>>>>> Additions >>>>>>>>>>>>>
-def lisa(imgs,qtns):
-    args = parse_args()
-    os.makedirs(args.vis_save_path, exist_ok=True)
+class Lisa(nn.Module):
 
-    # Create model
-    tokenizer = AutoTokenizer.from_pretrained(
-        args.version,
-        cache_dir=None,
-        model_max_length=args.model_max_length,
-        padding_side="right",
-        use_fast=False,
-    )
-    tokenizer.pad_token = tokenizer.unk_token
-    args.seg_token_idx = tokenizer("[SEG]", add_special_tokens=False).input_ids[0]
+    def __init__(self,):
+        super(Lisa, self).__init__()
 
+        self.args = parse_args()
+        os.makedirs(self.args.vis_save_path, exist_ok=True)
 
-    torch_dtype = torch.float32
-    if args.precision == "bf16":
-        torch_dtype = torch.bfloat16
-    elif args.precision == "fp16":
-        torch_dtype = torch.half
-
-    kwargs = {"torch_dtype": torch_dtype}
-    if args.load_in_4bit:
-        kwargs.update(
-            {
-                "torch_dtype": torch.half,
-                "load_in_4bit": True,
-                "quantization_config": BitsAndBytesConfig(
-                    load_in_4bit=True,
-                    bnb_4bit_compute_dtype=torch.float16,
-                    bnb_4bit_use_double_quant=True,
-                    bnb_4bit_quant_type="nf4",
-                    llm_int8_skip_modules=["visual_model"],
-                ),
-            }
+        # Create model
+        self.tokenizer = AutoTokenizer.from_pretrained(
+            self.args.version,
+            cache_dir=None,
+            model_max_length=self.args.model_max_length,
+            padding_side="right",
+            use_fast=False,
         )
-    elif args.load_in_8bit:
-        kwargs.update(
-            {
-                "torch_dtype": torch.half,
-                "quantization_config": BitsAndBytesConfig(
-                    llm_int8_skip_modules=["visual_model"],
-                    load_in_8bit=True,
-                ),
-            }
-        )
+        self.tokenizer.pad_token = self.tokenizer.unk_token
+        self.args.seg_token_idx = self.tokenizer("[SEG]", add_special_tokens=False).input_ids[0]
 
-    model = LISAForCausalLM.from_pretrained(
-        args.version, low_cpu_mem_usage=True, vision_tower=args.vision_tower, seg_token_idx=args.seg_token_idx, **kwargs
-    )
 
-    model.config.eos_token_id = tokenizer.eos_token_id
-    model.config.bos_token_id = tokenizer.bos_token_id
-    model.config.pad_token_id = tokenizer.pad_token_id
+        torch_dtype = torch.float32
+        if self.args.precision == "bf16":
+            torch_dtype = torch.bfloat16
+        elif self.args.precision == "fp16":
+            torch_dtype = torch.half
 
-    model.get_model().initialize_vision_modules(model.get_model().config)
-    vision_tower = model.get_model().get_vision_tower()
-    vision_tower.to(dtype=torch_dtype)
-
-    if args.precision == "bf16":
-        model = model.bfloat16().cuda()
-    elif (
-        args.precision == "fp16" and (not args.load_in_4bit) and (not args.load_in_8bit)
-    ):
-        vision_tower = model.get_model().get_vision_tower()
-        model.model.vision_tower = None
-        import deepspeed
-
-        model_engine = deepspeed.init_inference(
-            model=model,
-            dtype=torch.half,
-            replace_with_kernel_inject=True,
-            replace_method="auto",
-        )
-        model = model_engine.module
-        model.model.vision_tower = vision_tower.half().cuda()
-    elif args.precision == "fp32":
-        model = model.float().cuda()
-
-    vision_tower = model.get_model().get_vision_tower()
-    vision_tower.to(device=args.local_rank)
-
-    clip_image_processor = CLIPImageProcessor.from_pretrained(model.config.vision_tower)
-    transform = ResizeLongestSide(args.image_size)
-
-    model.eval()
-
-    final_pred = []
-    final_text = []
-
-    for _i,_q in zip(imgs,qtns):
-        image_path,prompt = _i,_q
-        image_path = f"/home/gauravs/data/clevrmath_data/images/{int(_i.item())}.png"
-
-        conv = conversation_lib.conv_templates[args.conv_type].copy()
-        conv.messages = []
-
-        prompt = DEFAULT_IMAGE_TOKEN + "\n" + prompt
-        if args.use_mm_start_end:
-            replace_token = (
-                DEFAULT_IM_START_TOKEN + DEFAULT_IMAGE_TOKEN + DEFAULT_IM_END_TOKEN
+        kwargs = {"torch_dtype": torch_dtype}
+        if self.args.load_in_4bit:
+            kwargs.update(
+                {
+                    "torch_dtype": torch.half,
+                    "load_in_4bit": True,
+                    "quantization_config": BitsAndBytesConfig(
+                        load_in_4bit=True,
+                        bnb_4bit_compute_dtype=torch.float16,
+                        bnb_4bit_use_double_quant=True,
+                        bnb_4bit_quant_type="nf4",
+                        llm_int8_skip_modules=["visual_model"],
+                    ),
+                }
             )
-            prompt = prompt.replace(DEFAULT_IMAGE_TOKEN, replace_token)
+        elif self.args.load_in_8bit:
+            kwargs.update(
+                {
+                    "torch_dtype": torch.half,
+                    "quantization_config": BitsAndBytesConfig(
+                        llm_int8_skip_modules=["visual_model"],
+                        load_in_8bit=True,
+                    ),
+                }
+            )
 
-        conv.append_message(conv.roles[0], prompt)
-        conv.append_message(conv.roles[1], "")
-        prompt = conv.get_prompt()
-
-        if not os.path.exists(image_path):
-            print("File not found in {}".format(image_path))
-            continue
-
-        image_np = cv2.imread(image_path)
-        image_np = cv2.cvtColor(image_np, cv2.COLOR_BGR2RGB)
-        original_size_list = [image_np.shape[:2]]
-
-        image_clip = (
-            clip_image_processor.preprocess(image_np, return_tensors="pt")[
-                "pixel_values"
-            ][0]
-            .unsqueeze(0)
-            .cuda()
-        )
-        if args.precision == "bf16":
-            image_clip = image_clip.bfloat16()
-        elif args.precision == "fp16":
-            image_clip = image_clip.half()
-        else:
-            image_clip = image_clip.float()
-
-        image = transform.apply_image(image_np)
-        resize_list = [image.shape[:2]]
-
-        image = (
-            preprocess(torch.from_numpy(image).permute(2, 0, 1).contiguous())
-            .unsqueeze(0)
-            .cuda()
-        )
-        if args.precision == "bf16":
-            image = image.bfloat16()
-        elif args.precision == "fp16":
-            image = image.half()
-        else:
-            image = image.float()
-
-        input_ids = tokenizer_image_token(prompt, tokenizer, return_tensors="pt")
-        input_ids = input_ids.unsqueeze(0).cuda()
-
-        output_ids, pred_masks = model.evaluate(
-            image_clip,
-            image,
-            input_ids,
-            resize_list,
-            original_size_list,
-            max_new_tokens=512,
-            tokenizer=tokenizer,
+        self.model = LISAForCausalLM.from_pretrained(
+            self.args.version, low_cpu_mem_usage=True, vision_tower=self.args.vision_tower, seg_token_idx=self.args.seg_token_idx, **kwargs
         )
 
-        final_pred.append(pred_masks[0])
-        final_text.append(output_ids)
+        self.model.config.eos_token_id = self.tokenizer.eos_token_id
+        self.model.config.bos_token_id = self.tokenizer.bos_token_id
+        self.model.config.pad_token_id = self.tokenizer.pad_token_id
 
-        return torch.stack(final_pred), torch.stack(final_text)
+        self.model.get_model().initialize_vision_modules(self.model.get_model().config)
+        vision_tower = self.model.get_model().get_vision_tower()
+        vision_tower.to(dtype=torch_dtype)
+
+        if self.args.precision == "bf16":
+            self.model = self.model.bfloat16().cuda()
+        elif (
+            self.args.precision == "fp16" and (not self.args.load_in_4bit) and (not self.args.load_in_8bit)
+        ):
+            vision_tower = self.model.get_model().get_vision_tower()
+            self.model.model.vision_tower = None
+            import deepspeed
+
+            model_engine = deepspeed.init_inference(
+                model=self.model,
+                dtype=torch.half,
+                replace_with_kernel_inject=True,
+                replace_method="auto",
+            )
+            self.model = model_engine.module
+            self.model.model.vision_tower = vision_tower.half().cuda()
+        elif self.args.precision == "fp32":
+            self.model = self.model.float().cuda()
+
+        vision_tower = self.model.get_model().get_vision_tower()
+        vision_tower.to(device=self.args.local_rank)
+
+        self.clip_image_processor = CLIPImageProcessor.from_pretrained(self.model.config.vision_tower)
+        self.transform = ResizeLongestSide(self.args.image_size)
+        
+        self.model.eval()
+
+    def forward(self, imgs, qtns):
+        final_pred = []
+        final_text = []
+
+        for _i,_q in zip(imgs,qtns):
+            image_path,prompt = _i,_q
+            image_path = f"/home/gauravs/data/clevrmath_data/images/{int(_i.item())}.png"
+
+            conv = conversation_lib.conv_templates[self.args.conv_type].copy()
+            conv.messages = []
+
+            prompt = DEFAULT_IMAGE_TOKEN + "\n" + prompt
+            if self.args.use_mm_start_end:
+                replace_token = (
+                    DEFAULT_IM_START_TOKEN + DEFAULT_IMAGE_TOKEN + DEFAULT_IM_END_TOKEN
+                )
+                prompt = prompt.replace(DEFAULT_IMAGE_TOKEN, replace_token)
+
+            conv.append_message(conv.roles[0], prompt)
+            conv.append_message(conv.roles[1], "")
+            prompt = conv.get_prompt()
+
+            if not os.path.exists(image_path):
+                print("File not found in {}".format(image_path))
+                continue
+
+            image_np = cv2.imread(image_path)
+            image_np = cv2.cvtColor(image_np, cv2.COLOR_BGR2RGB)
+            original_size_list = [image_np.shape[:2]]
+
+            image_clip = (
+                self.clip_image_processor.preprocess(image_np, return_tensors="pt")[
+                    "pixel_values"
+                ][0]
+                .unsqueeze(0)
+                .cuda()
+            )
+            if self.args.precision == "bf16":
+                image_clip = image_clip.bfloat16()
+            elif self.args.precision == "fp16":
+                image_clip = image_clip.half()
+            else:
+                image_clip = image_clip.float()
+
+            image = self.tokenizer.apply_image(image_np)
+            resize_list = [image.shape[:2]]
+
+            image = (
+                preprocess(torch.from_numpy(image).permute(2, 0, 1).contiguous())
+                .unsqueeze(0)
+                .cuda()
+            )
+            if self.args.precision == "bf16":
+                image = image.bfloat16()
+            elif self.args.precision == "fp16":
+                image = image.half()
+            else:
+                image = image.float()
+
+            input_ids = tokenizer_image_token(prompt, self.tokenizer, return_tensors="pt")
+            input_ids = input_ids.unsqueeze(0).cuda()
+
+            output_ids, pred_masks = self.model.evaluate(
+                image_clip,
+                image,
+                input_ids,
+                resize_list,
+                original_size_list,
+                max_new_tokens=512,
+                tokenizer=self.tokenizer,
+            )
+
+            final_pred.append(pred_masks[0])
+            final_text.append(output_ids)
+
+            return torch.stack(final_pred), torch.stack(final_text)

@@ -63,6 +63,7 @@ def preprocess(
     return x
 
 # >>>>>>>>>>>>>>>>>>>>>>>>>>>> Additions >>>>>>>>>>>>>
+import torch.nn as nn
 class Lisa(nn.Module):
 
     def __init__(self,):

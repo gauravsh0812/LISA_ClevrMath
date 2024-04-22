@@ -103,15 +103,13 @@ def data_loaders(batch_size):
         else:
             val = pd.DataFrame(qi_data, columns=["IMG", "QUESTION", "LABEL"])
     
-    
-    print(f"saving dataset files to {cfg.dataset.path_to_data}/ folder...")
 
     # get max_len 
     max_len = get_max_len(train, test, val)    
     print("the max length: ", max_len)
 
     # initializing pad collate class
-    mypadcollate = My_pad_collate(cfg.general.device, max_len)
+    mypadcollate = My_pad_collate("cuda:0", max_len)
 
     print("building dataloaders...")
 

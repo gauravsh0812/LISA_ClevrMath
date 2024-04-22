@@ -16,7 +16,7 @@ from utils.utils import (DEFAULT_IM_END_TOKEN, DEFAULT_IM_START_TOKEN,
                          DEFAULT_IMAGE_TOKEN, IMAGE_TOKEN_INDEX)
 
 
-def parse_args(args):
+def parse_args():
     parser = argparse.ArgumentParser(description="LISA chat")
     parser.add_argument("--version", default="xinlai/LISA-13B-llama2-v1")
     parser.add_argument("--vis_save_path", default="./vis_output", type=str)

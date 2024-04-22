@@ -63,7 +63,7 @@ def preprocess(
     return x
 
 # >>>>>>>>>>>>>>>>>>>>>>>>>>>> Additions >>>>>>>>>>>>>
-def lisa(batch):
+def lisa(imgs,qtns):
     args = parse_args(args)
     os.makedirs(args.vis_save_path, exist_ok=True)
 
@@ -154,8 +154,8 @@ def lisa(batch):
     final_img = []
     final_pred = []
 
-    for _b in batch:
-        image_path,prompt = _b
+    for _i,_q in zip(imgs,qtns):
+        image_path,prompt = _i,_q
 
         conv = conversation_lib.conv_templates[args.conv_type].copy()
         conv.messages = []

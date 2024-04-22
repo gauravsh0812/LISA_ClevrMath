@@ -156,7 +156,7 @@ def lisa(imgs,qtns):
 
     for _i,_q in zip(imgs,qtns):
         image_path,prompt = _i,_q
-        image_path = f"/home/gauravs/data/clevrmath_data/images/{_i.item()}.png"
+        image_path = f"/home/gauravs/data/clevrmath_data/images/{int(_i.item())}.png"
 
         conv = conversation_lib.conv_templates[args.conv_type].copy()
         conv.messages = []

@@ -222,7 +222,7 @@ def lisa(imgs,qtns):
             tokenizer=tokenizer,
         )
         print("output_ids shape: ", output_ids.shape)
-        print("pred shape: ", pred_masks.shape)
+        print(pred_masks)
 
         output_ids = output_ids[0][output_ids[0] != IMAGE_TOKEN_INDEX]
         

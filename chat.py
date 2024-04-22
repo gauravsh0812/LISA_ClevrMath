@@ -63,7 +63,7 @@ def preprocess(
     return x
 
 # >>>>>>>>>>>>>>>>>>>>>>>>>>>> Additions >>>>>>>>>>>>>
-def lisa(args, batch):
+def lisa(batch):
     args = parse_args(args)
     os.makedirs(args.vis_save_path, exist_ok=True)
 
@@ -226,28 +226,3 @@ def lisa(args, batch):
         final_img.append(pred_masks)
 
         return torch.stack(final_pred), torch.stack(final_img)
-        
-        # for i, pred_mask in enumerate(pred_masks):
-        #     if pred_mask.shape[0] == 0:
-        #         continue
-
-        #     pred_mask = pred_mask.detach().cpu().numpy()[0]
-        #     pred_mask = pred_mask > 0
-
-        #     save_path = "{}/{}_mask_{}.jpg".format(
-        #         args.vis_save_path, image_path.split("/")[-1].split(".")[0], i
-        #     )
-        #     cv2.imwrite(save_path, pred_mask * 100)
-        #     print("{} has been saved.".format(save_path))
-
-        #     save_path = "{}/{}_masked_img_{}.jpg".format(
-        #         args.vis_save_path, image_path.split("/")[-1].split(".")[0], i
-        #     )
-        #     save_img = image_np.copy()
-        #     save_img[pred_mask] = (
-        #         image_np * 0.5
-        #         + pred_mask[:, :, None].astype(np.uint8) * np.array([255, 0, 0]) * 0.5
-        #     )[pred_mask]
-        #     save_img = cv2.cvtColor(save_img, cv2.COLOR_RGB2BGR)
-        #     cv2.imwrite(save_path, save_img)
-        #     print("{} has been saved.".format(save_path))

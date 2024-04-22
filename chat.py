@@ -151,7 +151,6 @@ def lisa(imgs,qtns):
 
     model.eval()
 
-    final_img = []
     final_pred = []
 
     for _i,_q in zip(imgs,qtns):
@@ -221,12 +220,7 @@ def lisa(imgs,qtns):
             max_new_tokens=512,
             tokenizer=tokenizer,
         )
-        print("output_ids shape: ", output_ids.shape)
-        print(pred_masks)
 
-        output_ids = output_ids[0][output_ids[0] != IMAGE_TOKEN_INDEX]
-        
-        final_pred.append(output_ids)
-        final_img.append(pred_masks)
+        final_pred.append(pred_masks[0])
 
-        return torch.stack(final_pred), torch.stack(final_img)
+        return torch.stack(final_pred)

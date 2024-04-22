@@ -180,7 +180,7 @@ class LisaModel(nn.Module):
         self.model = lisa
 
     def forward(self, imgs, qtns):
-        preds, masks = self.model(imgs, qtns)
+        preds = self.model(imgs, qtns)
         print(preds.shape)
 
 class Adaptor(nn.Module):

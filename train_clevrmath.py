@@ -72,9 +72,9 @@ class My_pad_collate(object):
 def data_loaders(batch_size):
 
     print("creating dataloaders...")
-    q = open(f"{cfg.dataset.path_to_data}/questions.lst").readlines()
-    l = open(f"{cfg.dataset.path_to_data}/labels.lst").readlines()
-    t = open(f"{cfg.dataset.path_to_data}/templates.lst").readlines()
+    q = open("/home/gauravs/data/clevrmath_data/questions.lst").readlines()
+    l = open("/home/gauravs/data/clevrmath_data/labels.lst").readlines()
+    t = open("/home/gauravs/data/clevrmath_data/templates.lst").readlines()
 
     assert len(q) == len(l) == len(t)
 
@@ -149,7 +149,7 @@ def data_loaders(batch_size):
     # initailizing class Img2MML_dataset: test dataloader
     imml_test = Img2MML_dataset(test)
     sampler = None
-    shuffle = cfg.dataset.shuffle
+    shuffle = True
 
     test_dataloader = DataLoader(
         imml_test,

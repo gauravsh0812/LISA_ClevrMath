@@ -200,7 +200,7 @@ class Lisa(nn.Module):
             else:
                 image_clip = image_clip.float()
 
-            image = self.tokenizer.apply_image(image_np)
+            image = self.transform.apply_image(image_np)
             resize_list = [image.shape[:2]]
 
             image = (

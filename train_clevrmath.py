@@ -177,7 +177,7 @@ max_len,
 class LisaModel(nn.Module):
     def __init__(self,):
         super(LisaModel, self).__init__()
-        self.model = Lisa
+        self.model = Lisa()
 
     def forward(self, imgs, qtns):
         preds, texts = self.model(imgs, qtns)

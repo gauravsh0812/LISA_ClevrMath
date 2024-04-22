@@ -206,7 +206,7 @@ for param in lisamodel.parameters():
 
 adamodel = Adaptor()
 
-for i in epochs:
+for i in range(epochs):
     epoch_loss = 0
 
     adamodel.train()

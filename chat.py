@@ -221,8 +221,11 @@ def lisa(imgs,qtns):
             max_new_tokens=512,
             tokenizer=tokenizer,
         )
-        output_ids = output_ids[0][output_ids[0] != IMAGE_TOKEN_INDEX]
         print("output_ids shape: ", output_ids.shape)
+        print("pred shape: ", pred_masks.shape)
+
+        output_ids = output_ids[0][output_ids[0] != IMAGE_TOKEN_INDEX]
+        
         final_pred.append(output_ids)
         final_img.append(pred_masks)
 

@@ -185,7 +185,6 @@ class Lisa(nn.Module):
 
             image_np = cv2.imread(image_path)
             h, w, _ = image_np.shape
-            print(image_np.shape)
             if w != 480 or h != 320:
                 # Calculate aspect ratio of the original image
                 aspect_ratio = w / h
@@ -202,7 +201,8 @@ class Lisa(nn.Module):
                 new_image = Image.new('RGB', (480, 320), (255, 255, 255)) # White background
 
                 # Paste the original image onto the new image, centered and padded as needed
-                new_image.paste(image_np, (0, padding_top))
+                resized_image = image_np.resize((new_width, new_height))
+                new_image.paste(resized_image, (0, padding_top))
 
                 image_np = new_image
 

@@ -3,6 +3,7 @@ import os
 import sys
 
 import cv2
+from PIL import Image
 import numpy as np
 import torch
 import torch.nn.functional as F
@@ -199,15 +200,10 @@ class Lisa(nn.Module):
 
                 new_image = np.full((320, 480, 3), (255, 255, 255), dtype=np.uint8)
 
-                # Resize the original image to the new dimensions
-                resized_image = cv2.resize(image_np, (new_width, new_height))
+                new_image = Image.new('RGBA', (480, 320), (255, 255, 255, 255)) # White background
 
-                # Calculate the position to paste the resized image onto the new image
-                paste_position = (0, padding_top)
-
-                # Paste the resized image onto the new image
-                new_image[paste_position[1]:paste_position[1]+resized_image.shape[0], 
-                        paste_position[0]:paste_position[0]+resized_image.shape[1]] = resized_image
+                # Paste the original image onto the new image, centered and padded as needed
+                new_image.paste(image_np, (0, padding_top))
 
                 image_np = new_image
 

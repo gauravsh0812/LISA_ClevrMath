@@ -185,6 +185,7 @@ class Lisa(nn.Module):
 
             image_np = cv2.imread(image_path)
             h, w, _ = image_np.shape
+            print(image_np.shape)
             if w != 480 or h != 320:
                 # Calculate aspect ratio of the original image
                 aspect_ratio = w / h

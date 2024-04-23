@@ -198,8 +198,6 @@ class Lisa(nn.Module):
                 padding_top = padding_height // 2
                 padding_bottom = padding_height - padding_top
 
-                new_image = np.full((320, 480, 3), (255, 255, 255), dtype=np.uint8)
-
                 new_image = Image.new('RGBA', (480, 320), (255, 255, 255, 255)) # White background
 
                 # Paste the original image onto the new image, centered and padded as needed

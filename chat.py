@@ -183,6 +183,34 @@ class Lisa(nn.Module):
                 continue
 
             image_np = cv2.imread(image_path)
+            h, w, _ = image_np.shape
+            if w != 480 or h != 320:
+                # Calculate aspect ratio of the original image
+                aspect_ratio = w / h
+
+                # Calculate the new dimensions while maintaining the aspect ratio
+                new_width = 480
+                new_height = int(new_width / aspect_ratio)
+
+                # Calculate the padding needed to achieve the desired dimensions
+                padding_height = 320 - new_height
+                padding_top = padding_height // 2
+                padding_bottom = padding_height - padding_top
+
+                new_image = np.full((320, 480, 3), (255, 255, 255), dtype=np.uint8)
+
+                # Resize the original image to the new dimensions
+                resized_image = cv2.resize(image_np, (new_width, new_height))
+
+                # Calculate the position to paste the resized image onto the new image
+                paste_position = (0, padding_top)
+
+                # Paste the resized image onto the new image
+                new_image[paste_position[1]:paste_position[1]+resized_image.shape[0], 
+                        paste_position[0]:paste_position[0]+resized_image.shape[1]] = resized_image
+
+                image_np = new_image
+
             image_np = cv2.cvtColor(image_np, cv2.COLOR_BGR2RGB)
             original_size_list = [image_np.shape[:2]]
 

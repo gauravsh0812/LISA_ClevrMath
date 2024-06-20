@@ -167,7 +167,7 @@ def main(args):
         conv.append_message(conv.roles[1], "")
         prompt = conv.get_prompt()
 
-        images = os.listdir(f"/home/gauravs/data/clevrmath_data/images")[:1]
+        images = os.listdir(f"/home/gauravs/data/clevrmath_data/images")[1]
         for img in images:
             image_path = f"/home/gauravs/data/clevrmath_data/images/{img}"
             if not os.path.exists(image_path):
@@ -221,8 +221,9 @@ def main(args):
             )
             output_ids = output_ids[0][output_ids[0] != IMAGE_TOKEN_INDEX]
             
-            print(output_ids)
-            
+            print(output_ids.shape, pred_masks.shape)
+
+
             # text_output = tokenizer.decode(output_ids, skip_special_tokens=False)
             # text_output = text_output.replace("\n", "").replace("  ", " ")
             # print("text_output: ", text_output)

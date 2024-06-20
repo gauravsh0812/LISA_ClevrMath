@@ -255,7 +255,7 @@ class Lisa(nn.Module):
             
             output_ids = output_ids[0][output_ids[0] != IMAGE_TOKEN_INDEX]
             print(len(pred_masks))
-            print(pred_masks.shape)
+            print(pred_masks)
             # final_pred.append(pred_masks[0])
             # final_text.append(output_ids)
 

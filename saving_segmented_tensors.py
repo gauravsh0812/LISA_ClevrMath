@@ -167,7 +167,7 @@ def main(args):
         conv.append_message(conv.roles[1], "")
         prompt = conv.get_prompt()
 
-        images = os.listdir(f"/home/gauravs/data/clevrmath_data/images")[:3]
+        images = os.listdir(f"/home/gauravs/data/clevrmath_data/images")[:1]
         for img in images:
             image_path = f"/home/gauravs/data/clevrmath_data/images/{img}"
             if not os.path.exists(image_path):
@@ -220,35 +220,38 @@ def main(args):
                 tokenizer=tokenizer,
             )
             output_ids = output_ids[0][output_ids[0] != IMAGE_TOKEN_INDEX]
+            
+            print(output_ids)
+            
+            # text_output = tokenizer.decode(output_ids, skip_special_tokens=False)
+            # text_output = text_output.replace("\n", "").replace("  ", " ")
+            # print("text_output: ", text_output)
 
-            text_output = tokenizer.decode(output_ids, skip_special_tokens=False)
-            text_output = text_output.replace("\n", "").replace("  ", " ")
-            print("text_output: ", text_output)
 
-        for i, pred_mask in enumerate(pred_masks):
-            if pred_mask.shape[0] == 0:
-                continue
+        # for i, pred_mask in enumerate(pred_masks):
+        #     if pred_mask.shape[0] == 0:
+        #         continue
 
-            pred_mask = pred_mask.detach().cpu().numpy()[0]
-            pred_mask = pred_mask > 0
+        #     pred_mask = pred_mask.detach().cpu().numpy()[0]
+        #     pred_mask = pred_mask > 0
 
-            save_path = "{}/{}_mask_{}.jpg".format(
-                args.vis_save_path, image_path.split("/")[-1].split(".")[0], i
-            )
-            cv2.imwrite(save_path, pred_mask * 100)
-            print("{} has been saved.".format(save_path))
+        #     save_path = "{}/{}_mask_{}.jpg".format(
+        #         args.vis_save_path, image_path.split("/")[-1].split(".")[0], i
+        #     )
+        #     cv2.imwrite(save_path, pred_mask * 100)
+        #     print("{} has been saved.".format(save_path))
 
-            save_path = "{}/{}_masked_img_{}.jpg".format(
-                args.vis_save_path, image_path.split("/")[-1].split(".")[0], i
-            )
-            save_img = image_np.copy()
-            save_img[pred_mask] = (
-                image_np * 0.5
-                + pred_mask[:, :, None].astype(np.uint8) * np.array([255, 0, 0]) * 0.5
-            )[pred_mask]
-            save_img = cv2.cvtColor(save_img, cv2.COLOR_RGB2BGR)
-            cv2.imwrite(save_path, save_img)
-            print("{} has been saved.".format(save_path))
+        #     save_path = "{}/{}_masked_img_{}.jpg".format(
+        #         args.vis_save_path, image_path.split("/")[-1].split(".")[0], i
+        #     )
+        #     save_img = image_np.copy()
+        #     save_img[pred_mask] = (
+        #         image_np * 0.5
+        #         + pred_mask[:, :, None].astype(np.uint8) * np.array([255, 0, 0]) * 0.5
+        #     )[pred_mask]
+        #     save_img = cv2.cvtColor(save_img, cv2.COLOR_RGB2BGR)
+        #     cv2.imwrite(save_path, save_img)
+        #     print("{} has been saved.".format(save_path))
 
 
 if __name__ == "__main__":

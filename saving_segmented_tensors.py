@@ -169,6 +169,7 @@ def main(args):
 
         images = os.listdir(f"/home/gauravs/data/clevrmath_data/images")[1]
         for img in images:
+            print(img)
             image_path = f"/home/gauravs/data/clevrmath_data/images/{img}"
             if not os.path.exists(image_path):
                 print("File not found in {}".format(image_path))

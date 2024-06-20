@@ -3,6 +3,7 @@ import os
 import sys
 
 import cv2
+from PIL import Image
 import numpy as np
 import torch
 import torch.nn.functional as F
@@ -16,7 +17,7 @@ from utils.utils import (DEFAULT_IM_END_TOKEN, DEFAULT_IM_START_TOKEN,
                          DEFAULT_IMAGE_TOKEN, IMAGE_TOKEN_INDEX)
 
 
-def parse_args(args):
+def parse_args():
     parser = argparse.ArgumentParser(description="LISA chat")
     parser.add_argument("--version", default="xinlai/LISA-13B-llama2-v1")
     parser.add_argument("--vis_save_path", default="./vis_output", type=str)
@@ -43,7 +44,7 @@ def parse_args(args):
         type=str,
         choices=["llava_v1", "llava_llama_2"],
     )
-    return parser.parse_args(args)
+    return parser.parse_args()
 
 
 def preprocess(
@@ -62,137 +63,169 @@ def preprocess(
     x = F.pad(x, (0, padw, 0, padh))
     return x
 
+# >>>>>>>>>>>>>>>>>>>>>>>>>>>> Additions >>>>>>>>>>>>>
+import torch.nn as nn
+class Lisa(nn.Module):
 
-def main(args):
-    args = parse_args(args)
-    os.makedirs(args.vis_save_path, exist_ok=True)
+    def __init__(self,):
+        super(Lisa, self).__init__()
 
-    # Create model
-    tokenizer = AutoTokenizer.from_pretrained(
-        args.version,
-        cache_dir=None,
-        model_max_length=args.model_max_length,
-        padding_side="right",
-        use_fast=False,
-    )
-    tokenizer.pad_token = tokenizer.unk_token
-    args.seg_token_idx = tokenizer("[SEG]", add_special_tokens=False).input_ids[0]
+        self.args = parse_args()
+        os.makedirs(self.args.vis_save_path, exist_ok=True)
 
-
-    torch_dtype = torch.float32
-    if args.precision == "bf16":
-        torch_dtype = torch.bfloat16
-    elif args.precision == "fp16":
-        torch_dtype = torch.half
-
-    kwargs = {"torch_dtype": torch_dtype}
-    if args.load_in_4bit:
-        kwargs.update(
-            {
-                "torch_dtype": torch.half,
-                "load_in_4bit": True,
-                "quantization_config": BitsAndBytesConfig(
-                    load_in_4bit=True,
-                    bnb_4bit_compute_dtype=torch.float16,
-                    bnb_4bit_use_double_quant=True,
-                    bnb_4bit_quant_type="nf4",
-                    llm_int8_skip_modules=["visual_model"],
-                ),
-            }
+        # Create model
+        self.tokenizer = AutoTokenizer.from_pretrained(
+            self.args.version,
+            cache_dir=None,
+            model_max_length=self.args.model_max_length,
+            padding_side="right",
+            use_fast=False,
         )
-    elif args.load_in_8bit:
-        kwargs.update(
-            {
-                "torch_dtype": torch.half,
-                "quantization_config": BitsAndBytesConfig(
-                    llm_int8_skip_modules=["visual_model"],
-                    load_in_8bit=True,
-                ),
-            }
-        )
+        self.tokenizer.pad_token = self.tokenizer.unk_token
+        self.args.seg_token_idx = self.tokenizer("[SEG]", add_special_tokens=False).input_ids[0]
 
-    model = LISAForCausalLM.from_pretrained(
-        args.version, low_cpu_mem_usage=True, vision_tower=args.vision_tower, seg_token_idx=args.seg_token_idx, **kwargs
-    )
 
-    model.config.eos_token_id = tokenizer.eos_token_id
-    model.config.bos_token_id = tokenizer.bos_token_id
-    model.config.pad_token_id = tokenizer.pad_token_id
+        torch_dtype = torch.float32
+        if self.args.precision == "bf16":
+            torch_dtype = torch.bfloat16
+        elif self.args.precision == "fp16":
+            torch_dtype = torch.half
 
-    model.get_model().initialize_vision_modules(model.get_model().config)
-    vision_tower = model.get_model().get_vision_tower()
-    vision_tower.to(dtype=torch_dtype)
-
-    if args.precision == "bf16":
-        model = model.bfloat16().cuda()
-    elif (
-        args.precision == "fp16" and (not args.load_in_4bit) and (not args.load_in_8bit)
-    ):
-        vision_tower = model.get_model().get_vision_tower()
-        model.model.vision_tower = None
-        import deepspeed
-
-        model_engine = deepspeed.init_inference(
-            model=model,
-            dtype=torch.half,
-            replace_with_kernel_inject=True,
-            replace_method="auto",
-        )
-        model = model_engine.module
-        model.model.vision_tower = vision_tower.half().cuda()
-    elif args.precision == "fp32":
-        model = model.float().cuda()
-
-    vision_tower = model.get_model().get_vision_tower()
-    vision_tower.to(device=args.local_rank)
-
-    clip_image_processor = CLIPImageProcessor.from_pretrained(model.config.vision_tower)
-    transform = ResizeLongestSide(args.image_size)
-
-    model.eval()
-
-    while True:
-        conv = conversation_lib.conv_templates[args.conv_type].copy()
-        conv.messages = []
-
-        prompt = "Segment all objects in the image."    # ========== New segmentation prompt ======== #
-        prompt = DEFAULT_IMAGE_TOKEN + "\n" + prompt
-        if args.use_mm_start_end:
-            replace_token = (
-                DEFAULT_IM_START_TOKEN + DEFAULT_IMAGE_TOKEN + DEFAULT_IM_END_TOKEN
+        kwargs = {"torch_dtype": torch_dtype}
+        if self.args.load_in_4bit:
+            kwargs.update(
+                {
+                    "torch_dtype": torch.half,
+                    "load_in_4bit": True,
+                    "quantization_config": BitsAndBytesConfig(
+                        load_in_4bit=True,
+                        bnb_4bit_compute_dtype=torch.float16,
+                        bnb_4bit_use_double_quant=True,
+                        bnb_4bit_quant_type="nf4",
+                        llm_int8_skip_modules=["visual_model"],
+                    ),
+                }
             )
-            prompt = prompt.replace(DEFAULT_IMAGE_TOKEN, replace_token)
+        elif self.args.load_in_8bit:
+            kwargs.update(
+                {
+                    "torch_dtype": torch.half,
+                    "quantization_config": BitsAndBytesConfig(
+                        llm_int8_skip_modules=["visual_model"],
+                        load_in_8bit=True,
+                    ),
+                }
+            )
 
-        conv.append_message(conv.roles[0], prompt)
-        conv.append_message(conv.roles[1], "")
-        prompt = conv.get_prompt()
+        self.model = LISAForCausalLM.from_pretrained(
+            self.args.version, low_cpu_mem_usage=True, vision_tower=self.args.vision_tower, seg_token_idx=self.args.seg_token_idx, **kwargs
+        )
 
-        images = os.listdir(f"/home/gauravs/data/clevrmath_data/images")[1]
-        for img in images:
-            image_path = f"/home/gauravs/data/clevrmath_data/images/{img}.png"
+        self.model.config.eos_token_id = self.tokenizer.eos_token_id
+        self.model.config.bos_token_id = self.tokenizer.bos_token_id
+        self.model.config.pad_token_id = self.tokenizer.pad_token_id
+
+        self.model.get_model().initialize_vision_modules(self.model.get_model().config)
+        vision_tower = self.model.get_model().get_vision_tower()
+        vision_tower.to(dtype=torch_dtype)
+
+        if self.args.precision == "bf16":
+            self.model = self.model.bfloat16().cuda()
+        elif (
+            self.args.precision == "fp16" and (not self.args.load_in_4bit) and (not self.args.load_in_8bit)
+        ):
+            vision_tower = self.model.get_model().get_vision_tower()
+            self.model.model.vision_tower = None
+            import deepspeed
+
+            model_engine = deepspeed.init_inference(
+                model=self.model,
+                dtype=torch.half,
+                replace_with_kernel_inject=True,
+                replace_method="auto",
+            )
+            self.model = model_engine.module
+            self.model.model.vision_tower = vision_tower.half().cuda()
+        elif self.args.precision == "fp32":
+            self.model = self.model.float().cuda()
+
+        vision_tower = self.model.get_model().get_vision_tower()
+        vision_tower.to(device=self.args.local_rank)
+
+        self.clip_image_processor = CLIPImageProcessor.from_pretrained(self.model.config.vision_tower)
+        self.transform = ResizeLongestSide(self.args.image_size)
+        
+        self.model.eval()
+
+    def forward(self, imgs):#, qtns):
+        final_pred = []
+        final_text = []
+
+        # for _i,_q in zip(imgs,qtns):
+        for _i in imgs:
+            # image_path,prompt = _i,_q
+            image_path = f"/home/gauravs/data/clevrmath_data/images/{int(_i.item())}.png"
+
+            conv = conversation_lib.conv_templates[self.args.conv_type].copy()
+            conv.messages = []
+
+            prompt = "Segment the objects in the image."
+            prompt = DEFAULT_IMAGE_TOKEN + "\n" + prompt
+            if self.args.use_mm_start_end:
+                replace_token = (
+                    DEFAULT_IM_START_TOKEN + DEFAULT_IMAGE_TOKEN + DEFAULT_IM_END_TOKEN
+                )
+                prompt = prompt.replace(DEFAULT_IMAGE_TOKEN, replace_token)
+
+            conv.append_message(conv.roles[0], prompt)
+            conv.append_message(conv.roles[1], "")
+            prompt = conv.get_prompt()
+
             if not os.path.exists(image_path):
                 print("File not found in {}".format(image_path))
                 continue
 
             image_np = cv2.imread(image_path)
+            h, w, _ = image_np.shape
+            if w != 480 or h != 320:
+                # Calculate aspect ratio of the original image
+                aspect_ratio = w / h
+
+                # Calculate the new dimensions while maintaining the aspect ratio
+                new_width = 480
+                new_height = int(new_width / aspect_ratio)
+
+                # Calculate the padding needed to achieve the desired dimensions
+                padding_height = 320 - new_height
+                padding_top = padding_height // 2
+                padding_bottom = padding_height - padding_top
+
+                new_image = Image.new('RGB', (480, 320), (255, 255, 255)) # White background
+
+                # Paste the original image onto the new image, centered and padded as needed
+                resized_image = image_np.resize((new_width, new_height))
+                new_image.paste(resized_image, (0, padding_top))
+
+                image_np = new_image
+
             image_np = cv2.cvtColor(image_np, cv2.COLOR_BGR2RGB)
             original_size_list = [image_np.shape[:2]]
 
             image_clip = (
-                clip_image_processor.preprocess(image_np, return_tensors="pt")[
+                self.clip_image_processor.preprocess(image_np, return_tensors="pt")[
                     "pixel_values"
                 ][0]
                 .unsqueeze(0)
                 .cuda()
             )
-            if args.precision == "bf16":
+            if self.args.precision == "bf16":
                 image_clip = image_clip.bfloat16()
-            elif args.precision == "fp16":
+            elif self.args.precision == "fp16":
                 image_clip = image_clip.half()
             else:
                 image_clip = image_clip.float()
 
-            image = transform.apply_image(image_np)
+            image = self.transform.apply_image(image_np)
             resize_list = [image.shape[:2]]
 
             image = (
@@ -200,60 +233,33 @@ def main(args):
                 .unsqueeze(0)
                 .cuda()
             )
-            if args.precision == "bf16":
+            if self.args.precision == "bf16":
                 image = image.bfloat16()
-            elif args.precision == "fp16":
+            elif self.args.precision == "fp16":
                 image = image.half()
             else:
                 image = image.float()
 
-            input_ids = tokenizer_image_token(prompt, tokenizer, return_tensors="pt")
+            input_ids = tokenizer_image_token(prompt, self.tokenizer, return_tensors="pt")
             input_ids = input_ids.unsqueeze(0).cuda()
 
-            output_ids, pred_masks = model.evaluate(
+            output_ids, pred_masks = self.model.evaluate(
                 image_clip,
                 image,
                 input_ids,
                 resize_list,
                 original_size_list,
                 max_new_tokens=512,
-                tokenizer=tokenizer,
+                tokenizer=self.tokenizer,
             )
-            output_ids = output_ids[0][output_ids[0] != IMAGE_TOKEN_INDEX]
             
-            print(output_ids.shape, pred_masks.shape)
+            output_ids = output_ids[0][output_ids[0] != IMAGE_TOKEN_INDEX]
+            print(output_ids)
+            # final_pred.append(pred_masks[0])
+            # final_text.append(output_ids)
 
+        # return torch.stack(final_pred), torch.stack(final_text)
+    
 
-            # text_output = tokenizer.decode(output_ids, skip_special_tokens=False)
-            # text_output = text_output.replace("\n", "").replace("  ", " ")
-            # print("text_output: ", text_output)
-
-
-        # for i, pred_mask in enumerate(pred_masks):
-        #     if pred_mask.shape[0] == 0:
-        #         continue
-
-        #     pred_mask = pred_mask.detach().cpu().numpy()[0]
-        #     pred_mask = pred_mask > 0
-
-        #     save_path = "{}/{}_mask_{}.jpg".format(
-        #         args.vis_save_path, image_path.split("/")[-1].split(".")[0], i
-        #     )
-        #     cv2.imwrite(save_path, pred_mask * 100)
-        #     print("{} has been saved.".format(save_path))
-
-        #     save_path = "{}/{}_masked_img_{}.jpg".format(
-        #         args.vis_save_path, image_path.split("/")[-1].split(".")[0], i
-        #     )
-        #     save_img = image_np.copy()
-        #     save_img[pred_mask] = (
-        #         image_np * 0.5
-        #         + pred_mask[:, :, None].astype(np.uint8) * np.array([255, 0, 0]) * 0.5
-        #     )[pred_mask]
-        #     save_img = cv2.cvtColor(save_img, cv2.COLOR_RGB2BGR)
-        #     cv2.imwrite(save_path, save_img)
-        #     print("{} has been saved.".format(save_path))
-
-
-if __name__ == "__main__":
-    main(sys.argv[1:])
+l = Lisa()
+l([torch.tensor(1)])
